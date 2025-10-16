@@ -440,44 +440,47 @@
       document.getElementById('confirmBtn').disabled = !isComplete;
     }
 
-    async function confirmDonation() {
-      const donorName = document.getElementById('donorName').value;
-      const donorPhone = document.getElementById('donorPhone').value;
-      const donorAddress = document.getElementById('donorAddress').value;
+  async function confirmDonation() {
+  const donorName = document.getElementById('donorName').value;
+  const donorEmail = document.getElementById('donorEmail').value; // ✅ added
+  const donorPhone = document.getElementById('donorPhone').value;
+  const donorAddress = document.getElementById('donorAddress').value;
 
-      if (!donorName || !donorPhone || !donorAddress || !selectedPayment) {
-        alert('Please fill out all fields and select a payment method.');
-        return;
-      }
+  if (!donorName || !donorEmail || !donorPhone || !donorAddress || !selectedPayment) {
+    alert('Please fill out all fields and select a payment method.');
+    return;
+  }
 
-      const amount = selectedNumbers.reduce((s, n) => s + n, 0);
+  const amount = selectedNumbers.reduce((s, n) => s + n, 0);
 
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          number: selectedNumbers.length === 1 ? selectedNumbers[0] : selectedNumbers,
-          name: donorName,
-          phone: donorPhone,
-          address: donorAddress,
-          amount,
-          paymentMethod: selectedPayment
-        })
-      });
-      const result = await res.json();
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      number: selectedNumbers.length === 1 ? selectedNumbers[0] : selectedNumbers,
+      name: donorName,
+      email: donorEmail, // ✅ added email field
+      phone: donorPhone,
+      address: donorAddress,
+      amount,
+      paymentMethod: selectedPayment
+    })
+  });
 
-      if (result.success) {
-        sessionStorage.setItem('donationSuccess', 'true');
-        sessionStorage.setItem('donationAmount', amount);
-        alert('✅ Thank you for your donation! James appreciates your support for the mission trip.');
-        selectedNumbers = [];
-        selectedPayment = '';
-        closeModal();
-        await loadAndRender();
-      } else {
-        alert('❌ Error: ' + result.error);
-      }
-    }
+  const result = await res.json();
+
+  if (result.success) {
+    sessionStorage.setItem('donationSuccess', 'true');
+    sessionStorage.setItem('donationAmount', amount);
+    alert('✅ Thank you for your donation! James appreciates your support for the mission trip.');
+    selectedNumbers = [];
+    selectedPayment = '';
+    closeModal();
+    await loadAndRender();
+  } else {
+    alert('❌ Error: ' + result.error);
+  }
+}
 
     function showSuccessBanner() {
       const banner = document.getElementById('successBanner');
@@ -513,3 +516,4 @@
   </script>
 </body>
 </html>
+
