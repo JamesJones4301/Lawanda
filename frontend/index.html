@@ -284,238 +284,248 @@
     </div>
   </div>
 
-  <script>
-    // Backend API Configuration
-    const API_URL = "/api/donations";
+ <script>
+  // Backend API Configuration
+  const API_URL = "/api/donations";
 
-    let selectedNumbers = [];
-    let selectedPayment = '';
-    let donations = [];
-    let goal = 3500;
+  let selectedNumbers = [];
+  let selectedPayment = '';
+  let donations = [];
 
-    async function fetchDonations() {
-      try {
-        const res = await fetch(API_URL);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        donations = await res.json();
-      } catch (error) {
-        console.error('Error fetching donations:', error);
-        donations = [];
+  // Goals
+  const oldGoal = 3500;    // keep visible but struck-through
+  const newGoal = 2030;    // actual goal used for progress calculation
+  let goal = newGoal;      // use this value for progress math
+
+  async function fetchDonations() {
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      donations = await res.json();
+    } catch (error) {
+      console.error('Error fetching donations:', error);
+      donations = [];
+    }
+  }
+
+  function getTakenNumbers() {
+    return donations.flatMap(d => Array.isArray(d.number) ? d.number : [d.number]);
+  }
+
+  function generateNumberGrid() {
+    const grid = document.getElementById('numberGrid');
+    grid.innerHTML = '';
+    const taken = getTakenNumbers();
+
+    for (let i = 1; i <= 80; i++) {
+      const button = document.createElement('div');
+      button.className = 'number-button';
+      button.textContent = i;
+      button.title = `Donate $${i}`;
+      if (taken.includes(i)) {
+        button.classList.add('donated');
+        button.style.pointerEvents = 'none';
+      } else if (selectedNumbers.includes(i)) {
+        button.classList.add('selected');
       }
+      button.onclick = () => selectNumber(i);
+      grid.appendChild(button);
+    }
+  }
+
+  function selectNumber(number) {
+    const taken = getTakenNumbers();
+    if (taken.includes(number)) return;
+    const idx = selectedNumbers.indexOf(number);
+    if (idx > -1) selectedNumbers.splice(idx, 1);
+    else selectedNumbers.push(number);
+    generateNumberGrid();
+    updateDonationSummary();
+  }
+
+  function updateDonationSummary() {
+    const total = selectedNumbers.reduce((s, n) => s + n, 0);
+    document.querySelector('#donationSummary .amount').textContent = `$${total}`;
+    const donateBtn = document.getElementById('donateBtn');
+    donateBtn.disabled = selectedNumbers.length === 0;
+  }
+
+  function updateProgress() {
+    const raised = donations.reduce((s, d) => s + (d.amount || 0), 0);
+    const pct = Math.min((raised / goal) * 100, 100);
+
+    // Update bar
+    document.getElementById('progressFill').style.width = `${pct}%`;
+
+    // Show raised amount and show the old goal struck-through, then the new goal
+    document.getElementById('progressText').innerHTML =
+      `$${raised.toLocaleString()} / <s>$${oldGoal.toLocaleString()}</s> → $${goal.toLocaleString()}`;
+
+    document.getElementById('progressPercentage').textContent = `${Math.round(pct)}% to goal`;
+
+    if (raised >= goal) {
+      document.getElementById('fundraiserCard').classList.add('completed');
+      document.getElementById('numberGrid').style.display = 'none';
+      document.getElementById('donateBtn').style.display = 'none';
+      document.getElementById('donationSummary').innerHTML =
+        '<div class="success-message">🎉 Goal Reached! Thank you for helping James get to Tanzania!</div>';
+    }
+  }
+
+  /* [RED CHANGE BLOCK] Open the modal instead of redirecting */
+  function processDonation() {
+    if (!selectedNumbers.length) return;
+    const total = selectedNumbers.reduce((s, n) => s + n, 0);
+    sessionStorage.setItem('selectedNumbers', JSON.stringify(selectedNumbers));
+    sessionStorage.setItem('donationAmount', total);
+    showPaymentModal(total); // open modal
+  }
+
+  function showPaymentModal(amount) {
+    const modal = document.getElementById('paymentModal');
+    document.getElementById('modalAmount').textContent = `$${amount}`;
+    selectedPayment = '';
+    document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+    document.getElementById('paymentInstructions').style.display = 'none';
+    document.getElementById('confirmBtn').disabled = true;
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+  }
+
+  function selectModalPayment(method) {
+    selectedPayment = method;
+    document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+    // Inline onclick handlers mean `event` is available in browsers for that call
+    if (event && event.target) {
+      const el = event.target.closest('.payment-option');
+      if (el) el.classList.add('selected');
+    }
+    const amount = selectedNumbers.reduce((s, n) => s + n, 0);
+    showPaymentInstructions(method, amount);
+    checkFormCompletion();
+  }
+
+  /* [RED CHANGE BLOCK] Render PayPal as a clickable link + button */
+  function showPaymentInstructions(method, amount) {
+    const instructions = document.getElementById('paymentInstructions');
+    const title = document.getElementById('paymentInstructionTitle');
+    const details = document.getElementById('paymentInstructionDetails');
+
+    const methods = {
+      'Venmo':  { handle: '@ADJones1', text: `Please send $${amount} via Venmo to @ADJones1` },
+      'CashApp':{ handle: '$VetCoach', text: `Please send $${amount} via CashApp to $VetCoach` },
+      'PayPal': { handle: 'https://www.paypal.com/ncp/payment/8PPGUJKXCXR44', text: `Please send $${amount} via PayPal` },
+      'Zelle':  { handle: '512-585-4106', text: `Please send $${amount} via Zelle to 512-585-4106` }
+    };
+
+    const pm = methods[method] || { handle:'', text:`Please send $${amount}` };
+    title.innerHTML = `Send $${amount} to James`;
+
+    if (method === 'PayPal') {
+      details.innerHTML = `
+        <p><strong>${pm.text}: <a href="${pm.handle}" target="_blank" rel="noopener noreferrer">${pm.handle}</a></strong></p>
+        <p>
+          <a href="${pm.handle}" target="_blank" rel="noopener noreferrer"
+             style="display:inline-block;padding:12px 18px;border-radius:10px;background:#003087;color:#fff;text-decoration:none;font-weight:700">
+            <i class="fab fa-paypal"></i> Donate with PayPal
+          </a>
+        </p>
+        <p><strong>Memo:</strong> Tanzania Mission Trip</p>
+      `;
+    } else {
+      details.innerHTML = `<p><strong>${pm.text}</strong></p><p><strong>Memo:</strong> Tanzania Mission Trip</p>`;
     }
 
-    function getTakenNumbers() {
-      return donations.flatMap(d => Array.isArray(d.number) ? d.number : [d.number]);
-    }
+    instructions.style.display = 'block';
+  }
 
-    function generateNumberGrid() {
-      const grid = document.getElementById('numberGrid');
-      grid.innerHTML = '';
-      const taken = getTakenNumbers();
-
-      for (let i = 1; i <= 80; i++) {
-        const button = document.createElement('div');
-        button.className = 'number-button';
-        button.textContent = i;
-        button.title = `Donate $${i}`;
-        if (taken.includes(i)) {
-          button.classList.add('donated');
-          button.style.pointerEvents = 'none';
-        } else if (selectedNumbers.includes(i)) {
-          button.classList.add('selected');
-        }
-        button.onclick = () => selectNumber(i);
-        grid.appendChild(button);
-      }
-    }
-
-    function selectNumber(number) {
-      const taken = getTakenNumbers();
-      if (taken.includes(number)) return;
-      const idx = selectedNumbers.indexOf(number);
-      if (idx > -1) selectedNumbers.splice(idx, 1);
-      else selectedNumbers.push(number);
-      generateNumberGrid();
-      updateDonationSummary();
-    }
-
-    function updateDonationSummary() {
-      const total = selectedNumbers.reduce((s, n) => s + n, 0);
-      document.querySelector('#donationSummary .amount').textContent = `$${total}`;
-      const donateBtn = document.getElementById('donateBtn');
-      donateBtn.disabled = selectedNumbers.length === 0;
-    }
-
-    function updateProgress() {
-      const raised = donations.reduce((s, d) => s + (d.amount || 0), 0);
-      const pct = Math.min((raised / goal) * 100, 100);
-      document.getElementById('progressFill').style.width = `${pct}%`;
-      document.getElementById('progressText').textContent = `$${raised} / $${goal.toLocaleString()}`;
-      document.getElementById('progressPercentage').textContent = `${Math.round(pct)}% to goal`;
-
-      if (raised >= goal) {
-        document.getElementById('fundraiserCard').classList.add('completed');
-        document.getElementById('numberGrid').style.display = 'none';
-        // document.querySelector('.payment-methods').style.display = 'none'; // element not present
-        document.getElementById('donateBtn').style.display = 'none';
-        document.getElementById('donationSummary').innerHTML =
-          '<div class="success-message">🎉 Goal Reached! Thank you for helping James get to Tanzania!</div>';
-      }
-    }
-
-    /* [RED CHANGE BLOCK] Open the modal instead of redirecting */
-    function processDonation() {
-      if (!selectedNumbers.length) return;
-      const total = selectedNumbers.reduce((s, n) => s + n, 0);
-      sessionStorage.setItem('selectedNumbers', JSON.stringify(selectedNumbers));
-      sessionStorage.setItem('donationAmount', total);
-      showPaymentModal(total); // [RED CHANGE] open modal so PayPal link can be clicked
-      // window.location.href = '/donate'; // (removed) old redirect
-    }
-
-    function showPaymentModal(amount) {
-      const modal = document.getElementById('paymentModal');
-      document.getElementById('modalAmount').textContent = `$${amount}`;
-      selectedPayment = '';
-      document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
-      document.getElementById('paymentInstructions').style.display = 'none';
-      document.getElementById('confirmBtn').disabled = true;
-      modal.style.display = 'flex';
-    }
-
-    function closeModal() {
-      document.getElementById('paymentModal').style.display = 'none';
-    }
-
-    function selectModalPayment(method) {
-      selectedPayment = method;
-      document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
-      event.target.closest('.payment-option').classList.add('selected');
-      const amount = selectedNumbers.reduce((s, n) => s + n, 0);
-      showPaymentInstructions(method, amount);
-      checkFormCompletion();
-    }
-
-    /* [RED CHANGE BLOCK] Render PayPal as a clickable link + button */
-    function showPaymentInstructions(method, amount) {
-      const instructions = document.getElementById('paymentInstructions');
-      const title = document.getElementById('paymentInstructionTitle');
-      const details = document.getElementById('paymentInstructionDetails');
-
-      const methods = {
-        'Venmo':  { handle: '@ADJones1', text: `Please send $${amount} via Venmo to @ADJones1` },
-        'CashApp':{ handle: '$VetCoach', text: `Please send $${amount} via CashApp to $VetCoach` },
-        // [RED CHANGE] Your PayPal link, clickable
-        'PayPal': { handle: 'https://www.paypal.com/ncp/payment/8PPGUJKXCXR44', text: `Please send $${amount} via PayPal` },
-        'Zelle':  { handle: '512-585-4106', text: `Please send $${amount} via Zelle to 512-585-4106` }
-      };
-
-      const pm = methods[method];
-      title.innerHTML = `Send $${amount} to James`;
-
-      if (method === 'PayPal') {
-        // [RED CHANGE] Use an anchor and a prominent button for PayPal
-        details.innerHTML = `
-          <p><strong>${pm.text}: <a href="${pm.handle}" target="_blank" rel="noopener noreferrer">${pm.handle}</a></strong></p>
-          <p>
-            <a href="${pm.handle}" target="_blank" rel="noopener noreferrer"
-               style="display:inline-block;padding:12px 18px;border-radius:10px;background:#003087;color:#fff;text-decoration:none;font-weight:700">
-              <i class="fab fa-paypal"></i> Donate with PayPal
-            </a>
-          </p>
-          <p><strong>Memo:</strong> Tanzania Mission Trip</p>
-        `;
-      } else {
-        details.innerHTML = `<p><strong>${pm.text}</strong></p><p><strong>Memo:</strong> Tanzania Mission Trip</p>`;
-      }
-
-      instructions.style.display = 'block';
-    }
-
-    function checkFormCompletion() {
-      const donorName = document.getElementById('donorName').value;
-      const donorPhone = document.getElementById('donorPhone').value;
-      const donorAddress = document.getElementById('donorAddress').value;
-      const isComplete = donorName && donorPhone && donorAddress && selectedPayment;
-      document.getElementById('confirmBtn').disabled = !isComplete;
-    }
+  function checkFormCompletion() {
+    const donorName = document.getElementById('donorName').value;
+    const donorPhone = document.getElementById('donorPhone').value;
+    const donorAddress = document.getElementById('donorAddress').value;
+    const isComplete = donorName && donorPhone && donorAddress && selectedPayment;
+    document.getElementById('confirmBtn').disabled = !isComplete;
+  }
 
   async function confirmDonation() {
-  const donorName = document.getElementById('donorName').value;
-  const donorEmail = document.getElementById('donorEmail').value; // ✅ added
-  const donorPhone = document.getElementById('donorPhone').value;
-  const donorAddress = document.getElementById('donorAddress').value;
+    const donorName = document.getElementById('donorName').value;
+    const donorEmail = document.getElementById('donorEmail').value;
+    const donorPhone = document.getElementById('donorPhone').value;
+    const donorAddress = document.getElementById('donorAddress').value;
 
-  if (!donorName || !donorEmail || !donorPhone || !donorAddress || !selectedPayment) {
-    alert('Please fill out all fields and select a payment method.');
-    return;
-  }
+    if (!donorName || !donorEmail || !donorPhone || !donorAddress || !selectedPayment) {
+      alert('Please fill out all fields and select a payment method.');
+      return;
+    }
 
-  const amount = selectedNumbers.reduce((s, n) => s + n, 0);
+    const amount = selectedNumbers.reduce((s, n) => s + n, 0);
 
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      number: selectedNumbers.length === 1 ? selectedNumbers[0] : selectedNumbers,
-      name: donorName,
-      email: donorEmail, // ✅ added email field
-      phone: donorPhone,
-      address: donorAddress,
-      amount,
-      paymentMethod: selectedPayment
-    })
-  });
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          number: selectedNumbers.length === 1 ? selectedNumbers[0] : selectedNumbers,
+          name: donorName,
+          email: donorEmail,
+          phone: donorPhone,
+          address: donorAddress,
+          amount,
+          paymentMethod: selectedPayment
+        })
+      });
 
-  const result = await res.json();
+      const result = await res.json();
 
-  if (result.success) {
-    sessionStorage.setItem('donationSuccess', 'true');
-    sessionStorage.setItem('donationAmount', amount);
-    alert('✅ Thank you for your donation! James appreciates your support for the mission trip.');
-    selectedNumbers = [];
-    selectedPayment = '';
-    closeModal();
-    await loadAndRender();
-  } else {
-    alert('❌ Error: ' + result.error);
-  }
-}
-
-    function showSuccessBanner() {
-      const banner = document.getElementById('successBanner');
-      const amt = sessionStorage.getItem('donationAmount');
-      if (amt) {
-        document.getElementById('successAmount').textContent = `$${amt}`;
-        banner.style.display = 'block';
-        setTimeout(() => closeSuccessBanner(), 10000);
+      if (result.success) {
+        sessionStorage.setItem('donationSuccess', 'true');
+        sessionStorage.setItem('donationAmount', amount);
+        alert('✅ Thank you for your donation! James appreciates your support for the mission trip.');
+        selectedNumbers = [];
+        selectedPayment = '';
+        closeModal();
+        await loadAndRender();
+      } else {
+        alert('❌ Error: ' + (result.error || 'Unknown error'));
       }
+    } catch (err) {
+      console.error('Error confirming donation:', err);
+      alert('❌ Network error — please try again.');
     }
+  }
 
-    function closeSuccessBanner() {
-      document.getElementById('successBanner').style.display = 'none';
-      sessionStorage.removeItem('donationSuccess');
-      sessionStorage.removeItem('donationAmount');
+  function showSuccessBanner() {
+    const banner = document.getElementById('successBanner');
+    const amt = sessionStorage.getItem('donationAmount');
+    if (amt) {
+      document.getElementById('successAmount').textContent = `$${amt}`;
+      banner.style.display = 'block';
+      setTimeout(() => closeSuccessBanner(), 10000);
     }
+  }
 
-    async function loadAndRender() {
-      await fetchDonations();
-      generateNumberGrid();
-      updateProgress();
-      updateDonationSummary();
-    }
+  function closeSuccessBanner() {
+    document.getElementById('successBanner').style.display = 'none';
+    sessionStorage.removeItem('donationSuccess');
+    sessionStorage.removeItem('donationAmount');
+  }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadAndRender();
-      document.getElementById('donateBtn').onclick = processDonation;
-      document.getElementById('donorName').addEventListener('input', checkFormCompletion);
-      document.getElementById('donorPhone').addEventListener('input', checkFormCompletion);
-      document.getElementById('donorAddress').addEventListener('input', checkFormCompletion);
-      if (sessionStorage.getItem('donationSuccess') === 'true') showSuccessBanner();
-    });
-  </script>
-</body>
-</html>
+  async function loadAndRender() {
+    await fetchDonations();
+    generateNumberGrid();
+    updateProgress();
+    updateDonationSummary();
+  }
 
-
-
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAndRender();
+    document.getElementById('donateBtn').onclick = processDonation;
+    document.getElementById('donorName').addEventListener('input', checkFormCompletion);
+    document.getElementById('donorPhone').addEventListener('input', checkFormCompletion);
+    document.getElementById('donorAddress').addEventListener('input', checkFormCompletion);
+    if (sessionStorage.getItem('donationSuccess') === 'true') showSuccessBanner();
+  });
+</script>
