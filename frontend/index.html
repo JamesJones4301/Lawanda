@@ -143,8 +143,8 @@
 
   <div class="container">
     <div class="header">
-      <h1><i class="fas fa-globe-africa"></i> Help Lawanda Get to Tanzania</h1>
-      <h2>Mission Trip to Arusha • November 19-29, 2025</h2>
+      <h1><i class="fas fa-globe-africa"></i> Help Jones Team Get to Tanzania</h1>
+      <h2>Mission Trip to Arusha • August 13-24, 2026</h2>
       <div class="trip-dates"><i class="fas fa-calendar-alt"></i> 10 Days of Impactful Service</div>
 
       <div class="mission-info">
@@ -169,7 +169,7 @@
         <i class="fas fa-heart"></i>
         <div class="success-text">
           <h3>Thank You for Your Donation!</h3>
-          <p>Your generous contribution of <strong id="successAmount">$0</strong> will help Lawanda make a difference in Tanzania. Every donation brings us closer to our goal!</p>
+          <p>Your generous contribution of <strong id="successAmount">$0</strong> will help us make a difference in Tanzania. Every donation brings us closer to our goal!</p>
         </div>
         <button class="close-success" onclick="closeSuccessBanner()"><i class="fas fa-times"></i></button>
       </div>
@@ -183,7 +183,7 @@
 
       <div class="progress-section">
         <div class="progress-info">
-          <div class="progress-text" id="progressText">$0 / <s>$3,500</s> → $2,030</div>
+          <div class="progress-text" id="progressText">$0 / <s>$7,500</s> → $5,500</div>
           <div class="progress-percentage" id="progressPercentage">0% to goal</div>
         </div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
@@ -212,8 +212,8 @@
     </div>
 
     <div class="footer">
-      <p>Thank you for supporting Lawanda's mission trip to Tanzania! Every donation makes a difference.</p>
-      <p>© 2025 Lawanda's Mission Trip Fundraiser</p>
+      <p>Thank you for supporting Jones Crew mission trip to Tanzania! Every donation makes a difference.</p>
+      <p>© 2026 Jones Crew Mission Trip Fundraiser</p>
       <p style="margin-top:10px;">
         <a href="/login.html" style="color:var(--accent);text-decoration:none;font-weight:600;"><i class="fas fa-chart-line"></i> Admin Dashboard</a>
       </p>
@@ -293,8 +293,8 @@
   let donations = [];
 
   // Goals
-  const oldGoal = 3500;    // keep visible but struck-through
-  const newGoal = 2030;    // actual goal used for progress calculation
+  const oldGoal = 7500;    // keep visible but struck-through
+  const newGoal = 5500;    // actual goal used for progress calculation
   let goal = newGoal;      // use this value for progress math
 
   async function fetchDonations() {
@@ -317,7 +317,7 @@
     grid.innerHTML = '';
     const taken = getTakenNumbers();
 
-    for (let i = 1; i <= 80; i++) {
+    for (let i = 1; i <= 100; i++) {
       const button = document.createElement('div');
       button.className = 'number-button';
       button.textContent = i;
@@ -368,7 +368,7 @@
       document.getElementById('numberGrid').style.display = 'none';
       document.getElementById('donateBtn').style.display = 'none';
       document.getElementById('donationSummary').innerHTML =
-        '<div class="success-message">🎉 Goal Reached! Thank you for helping James get to Tanzania!</div>';
+        '<div class="success-message">🎉 Goal Reached! Thank you for helping us get to Tanzania!</div>';
     }
   }
 
@@ -483,7 +483,7 @@
       if (result.success) {
         sessionStorage.setItem('donationSuccess', 'true');
         sessionStorage.setItem('donationAmount', amount);
-        alert('✅ Thank you for your donation! James appreciates your support for the mission trip.');
+        alert('✅ Thank you for your donation! We appreciate your support for the mission trip.');
         selectedNumbers = [];
         selectedPayment = '';
         closeModal();
@@ -529,3 +529,4 @@
     if (sessionStorage.getItem('donationSuccess') === 'true') showSuccessBanner();
   });
 </script>
+
