@@ -183,7 +183,7 @@
 
       <div class="progress-section">
         <div class="progress-info">
-          <div class="progress-text" id="progressText">$0 / <s>$7,500</s> → $5,500</div>
+          <div class="progress-text" id="progressText">$0 / $7,500</div>
           <div class="progress-percentage" id="progressPercentage">0% to goal</div>
         </div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
@@ -294,7 +294,7 @@
 
   // Goals
   const oldGoal = 7500;    // keep visible but struck-through
-  const newGoal = 5500;    // actual goal used for progress calculation
+  const newGoal = 7500;    // actual goal used for progress calculation
   let goal = newGoal;      // use this value for progress math
 
   async function fetchDonations() {
@@ -529,4 +529,5 @@
     if (sessionStorage.getItem('donationSuccess') === 'true') showSuccessBanner();
   });
 </script>
+
 
